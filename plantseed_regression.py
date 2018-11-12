@@ -36,7 +36,7 @@ take_train_samples= True
 take_test_samples= True
 num_test_samples= 200
 
-show_plot=False
+show_plot=True
 
 ## read train and test data
 
@@ -295,7 +295,7 @@ cv_num = 1
 
 acc_logreg_train = acc_logreg_valid = 0
 y_test_pred_proba_logreg = 0
-
+y_valid_pred_proba_logreg = 0
 for i in range(cv_num):
     
     shuffle_train_valid_data() # shuffle data
@@ -307,32 +307,34 @@ for i in range(cv_num):
     acc_logreg_valid += logreg.score(x_valid_bf, one_hot_to_dense(y_valid))
 
     y_test_pred_proba_logreg += logreg.predict_proba(x_test_bf)
-    
+    y_valid_pred_proba_logreg += logreg.predict_proba(x_valid_bf)
 acc_logreg_train /= cv_num
 acc_logreg_valid /= cv_num
 y_test_pred_proba_logreg /= cv_num
 y_test_pred_class_logreg = np.argmax(y_test_pred_proba_logreg, axis = 1)
+y_valid_pred_proba_logreg /= cv_num
+y_valid_pred_class_logreg = np.argmax(y_valid_pred_proba_logreg, axis = 1)
 
 print('Logistic Regression')
 print('Accuracy train/valid = %.4f/%.4f'%(acc_logreg_train, acc_logreg_valid))
 print('y_test_pred_class_logreg.shape = ', y_test_pred_class_logreg.shape)
 
 
-## show confusion matrix
+# show confusion matrix
 
-# cnf_matrix = confusion_matrix(one_hot_to_dense(y_valid), y_valid_pred_class)
-#
-# abbreviation = ['BG', 'Ch', 'Cl', 'CC', 'CW', 'FH', 'LSB', 'M', 'SM', 'SP', 'SFC', 'SB']
-# pd.DataFrame({'class': species, 'abbreviation': abbreviation})
-#
-# fig, ax = plt.subplots(1)
-# ax = sns.heatmap(cnf_matrix, ax=ax, cmap=plt.cm.Greens, annot=True)
-# ax.set_xticklabels(abbreviation)
-# ax.set_yticklabels(abbreviation)
-# plt.title('Confusion matrix of validation set')
-# plt.ylabel('True species')
-# plt.xlabel('Predicted species')
-# plt.show()
+cnf_matrix = confusion_matrix(one_hot_to_dense(y_valid), y_valid_pred_class_logreg)
+
+abbreviation = ['BG', 'Ch', 'Cl', 'CC', 'CW', 'FH', 'LSB', 'M', 'SM', 'SP', 'SFC', 'SB']
+pd.DataFrame({'class': species, 'abbreviation': abbreviation})
+
+fig, ax = plt.subplots(1)
+ax = sns.heatmap(cnf_matrix, ax=ax, cmap=plt.cm.Greens, annot=True)
+ax.set_xticklabels(abbreviation)
+ax.set_yticklabels(abbreviation)
+plt.title('Confusion matrix of validation set')
+plt.ylabel('True species')
+plt.xlabel('Predicted species')
+plt.show()
 
 y_test_pred_class = y_test_pred_class_logreg
 test_df['species_id'] = y_test_pred_class

@@ -36,7 +36,7 @@ take_train_samples= True
 take_test_samples= True
 num_test_samples= 200
 
-show_plot = False
+show_plot=False
 
 ## read train and test data
 
