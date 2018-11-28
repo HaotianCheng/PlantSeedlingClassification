@@ -51,7 +51,10 @@
     ini_set('max_execution_time', 0);
     $command = escapeshellcmd('python plantseed_CNN.py');
 	$output = shell_exec($command);
-	echo $output;
+	$rest = substr($output, strpos($output, "Prediction"));
+	echo '<h3>';
+	echo $rest;
+	echo '</h3>';
 	$history = "history/";
 	$history = $history . basename( $_FILES['uploaded_file']['name']);
 	copy($path, $history);
