@@ -1,20 +1,11 @@
 import tensorflow as tf
 from keras.applications import xception
-from keras.preprocessing import image 
-import keras.preprocessing.image
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, confusion_matrix
-import sklearn.ensemble
 import numpy as np
 import pandas as pd
-import datetime as dt
 from tqdm import tqdm
-from glob import glob
 import cv2
 import os
-import seaborn as sns
 import mpl_toolkits.axes_grid1
-import matplotlib
 import matplotlib.pyplot as plt
 import datetime
 
@@ -28,13 +19,14 @@ global_start = datetime.datetime.now()
 # validation set size
 valid_set_size_percentage = 10 # default = 10%
 
+pre_train = True
 # Initial operation
 load_bf_train=True
 load_bf_test=False
 
-take_train_samples= True
+take_train_samples= False
 take_test_samples= True
-num_test_samples= 200
+num_test_samples= 1
 
 show_plot=False
 
@@ -42,7 +34,7 @@ show_plot=False
 
 # directories
 cw_dir = os.getcwd()
-data_dir = 'C:\\Galaxy\\Tools\\Scripts\\PlantSeedling'
+data_dir = '/Applications/XAMPP/xamppfiles/htdocs/PlantSeedlings'
 train_dir = os.path.join(data_dir, 'train')
 test_dir = os.path.join(data_dir, 'test')
 
@@ -53,24 +45,15 @@ species = ['Black-grass', 'Charlock', 'Cleavers', 'Common Chickweed', 'Common wh
 num_species = len(species)
 
 # print number of images of each species in the training data
-for sp in species:
-    print('{} images of {}'.format(len(os.listdir(os.path.join(train_dir, sp))),sp))
-    
-# read all train data
-train = []
-for species_id, sp in enumerate(species):
-    for file in os.listdir(os.path.join(train_dir, sp)):
-        train.append(['train/{}/{}'.format(sp, file), file, species_id, sp])
-train_df = pd.DataFrame(train, columns=['filepath', 'file', 'species_id', 'species'])
-print('')
-print('train_df.shape = ', train_df.shape)
+
+
 
 # read all test data
 test = []
 for file in os.listdir(test_dir):
     test.append(['test/{}'.format(file), file])
 test_df = pd.DataFrame(test, columns=['filepath', 'file'])
-print('test_df.shape = ', test_df.shape)
+# print('test_df.shape = ', test_df.shape)
 
 def read_image(filepath, target_size=None):
     img = cv2.imread(os.path.join(data_dir, filepath), cv2.IMREAD_COLOR)
@@ -79,9 +62,7 @@ def read_image(filepath, target_size=None):
     #img = image.img_to_array(img)
     return img
 
-# print train data
-print(train_df.describe())
-train_df.head()
+
 if show_plot:
     fig = plt.figure(1, figsize=(num_species, num_species))
     grid = mpl_toolkits.axes_grid1.ImageGrid(fig, 111, nrows_ncols=(num_species, num_species), 
@@ -186,20 +167,12 @@ for i, filepath in tqdm(enumerate(test_df['filepath'])):
     
 # print('x_train_valid.shape = ', x_train_valid.shape)
 # print('x_test.shape = ', x_test.shape)
-'''
-cache_dir = os.path.expanduser(os.path.join('~', '.keras'))
-if not os.path.exists(cache_dir):
-    os.makedirs(cache_dir)
-models_dir = os.path.join(cache_dir, 'models')
-if not os.path.exists(models_dir):
-    os.makedirs(models_dir)
-'''
 
+'''
 if not load_bf_train:
 
     print('x_train_valid.shape = ', x_train_valid.shape)
     print('y_train_valid.shape = ', y_train_valid.shape)
-    print('')
 
 
     print('compute bottleneck features from Xception network')
@@ -220,26 +193,26 @@ if not load_bf_train:
 
     # compute bottleneck features from xception model
 else:
-    print('load bottleneck features and labels')
+    # print('load bottleneck features and labels')
     
     x_train_valid_bf = np.load(os.path.join(os.getcwd(),'x_train_valid_bf.npy'))
     y_train_valid = np.load(os.path.join(os.getcwd(),'y_train_valid.npy'))
 
-    print('x_train_valid_bf.shape = ', x_train_valid_bf.shape)
-    print('y_train_valid.shape = ', y_train_valid.shape)
-    
+    # print('x_train_valid_bf.shape = ', x_train_valid_bf.shape)
+    # print('y_train_valid.shape = ', y_train_valid.shape)
+'''
 local_start = datetime.datetime.now()
     
 # load xception base model and predict the last layer comprising 2048 neurons per image
 base_model = xception.Xception(weights='imagenet', include_top=False, pooling='avg')
 x_test_bf = base_model.predict(x_test, batch_size=32, verbose=1)
-    
-print('running time: ', datetime.datetime.now()-local_start)    
-print('')
-print('x_test_bf = ',x_test_bf.shape)
 
-print('save bottleneck features ')
-np.save(os.path.join(os.getcwd(),'x_test_bf.npy'), x_test_bf)
+# print('running time: ', datetime.datetime.now()-local_start)
+# print('')
+# print('x_test_bf = ',x_test_bf.shape)
+#
+# print('save bottleneck features ')
+
 
 def dense_to_one_hot(labels_dense, num_classes):
     num_labels = labels_dense.shape[0]
@@ -257,7 +230,7 @@ def one_hot_to_dense(labels_one_hot):
 # function to shuffle randomly train and validation data
 def shuffle_train_valid_data():
     
-    print('shuffle train and validation data')
+    # print('shuffle train and validation data')
     
     # shuffle train and validation data of original data
     perm_array = np.arange(len(x_train_valid_bf)) 
@@ -271,29 +244,22 @@ def shuffle_train_valid_data():
 
     return x_train_bf, y_train, x_valid_bf, y_valid 
 
-if valid_set_size_percentage > 0:
-    # split into train and validation sets
-    valid_set_size = int(len(x_train_valid_bf) * valid_set_size_percentage/100);
-    train_set_size = len(x_train_valid_bf) - valid_set_size;
-else:
-    # train on all available data
-    valid_set_size = int(len(x_train_valid_bf) * 0.1);
-    train_set_size = len(x_train_valid_bf)
+# if valid_set_size_percentage > 0:
+#     # split into train and validation sets
+#     valid_set_size = int(len(x_train_valid_bf) * valid_set_size_percentage/100);
+#     train_set_size = len(x_train_valid_bf) - valid_set_size;
+# else:
+#     # train on all available data
+#     valid_set_size = int(len(x_train_valid_bf) * 0.1);
+#     train_set_size = len(x_train_valid_bf)
 
 # split into train and validation sets including shuffling
-x_train_bf, y_train, x_valid_bf, y_valid = shuffle_train_valid_data() 
-
-print('x_train_bf.shape = ', x_train_bf.shape)
-print('y_train.shape = ', y_train.shape)
-print('x_valid_bf.shape = ', x_valid_bf.shape)
-print('y_valid.shape = ', y_valid.shape)
-
-
+# x_train_bf, y_train, x_valid_bf, y_valid = shuffle_train_valid_data()
 
 ## neural network with tensorflow
 
 # permutation array for shuffling train data
-perm_array_train = np.arange(len(x_train_bf)) 
+# perm_array_train = np.arange(len(x_train_bf))
 index_in_epoch = 0
 
 # function: to get the next mini batch
@@ -313,7 +279,8 @@ def get_next_batch(batch_size):
     
     return x_train_bf[perm_array_train[start:end]], y_train[perm_array_train[start:end]]
 
-x_size = x_train_bf.shape[1] # number of features
+# x_size = x_train_bf.shape[1] # number of features
+x_size = 2048
 y_size = num_species # binary variable
 n_n_fc1 = 1024 # number of neurons of first layer
 n_n_fc2 = num_species # number of neurons of second layer
@@ -337,7 +304,7 @@ b_fc2 = tf.Variable(tf.constant(0.1, shape = [n_n_fc2]))
 z_pred = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
 
 # cost function
-cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_data, 
+cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_data,
                                                                        logits=z_pred));
 
 # optimisation function
@@ -356,7 +323,7 @@ n_epoch = 15 # number of epochs
 batch_size = 50 
 keep_prob = 0.33 # dropout regularization with keeping probability
 learn_rate_range = [0.01,0.005,0.0025,0.001,0.001,0.001,0.00075,0.0005,0.00025,0.0001,
-                   0.0001,0.0001,0.0001,0.0001,0.0001,0.0001,0.0001,0.0001,0.0001];
+                   0.0001,0.0001,0.0001,0.0001,0.0001,0.0001,0.0001,0.0001,0.0001]
 learn_rate_step = 3 # in terms of epochs
 
 acc_train_DNN = 0
@@ -366,105 +333,106 @@ loss_valid_DNN = 0
 y_test_pred_proba_DNN = 0
 y_valid_pred_proba = 0
 
+saver = tf.train.Saver()
 # use cross validation
-for j in range(cv_num):
-    
-    # start TensorFlow session and initialize global variables
-    sess = tf.InteractiveSession() 
-    sess.run(tf.global_variables_initializer())  
+if not pre_train:
+    for j in range(cv_num):
 
-    # shuffle train/validation splits
-    shuffle_train_valid_data() 
-    n_step = -1;
+        # start TensorFlow session and initialize global variables
+        sess = tf.InteractiveSession()
+        sess.run(tf.global_variables_initializer())
 
-    # training model
-    for i in range(int(n_epoch*train_set_size/batch_size)):
+        # shuffle train/validation splits
+        shuffle_train_valid_data()
+        n_step = -1;
 
-        if i%int(learn_rate_step*train_set_size/batch_size) == 0:
-            n_step += 1;
-            learn_rate = learn_rate_range[n_step];
-            print('learnrate = ', learn_rate)
+        # training model
+        for i in range(int(n_epoch*train_set_size/batch_size)):
+
+            if i%int(learn_rate_step*train_set_size/batch_size) == 0:
+                n_step += 1;
+                learn_rate = learn_rate_range[n_step];
+                # print('learnrate = ', learn_rate)
+
+            x_batch, y_batch = get_next_batch(batch_size)
+
+            sess.run(train_step, feed_dict={x_data: x_batch, y_data: y_batch,
+                                            tf_keep_prob: keep_prob,
+                                            tf_learn_rate: learn_rate})
+
+            if i%int(0.25*train_set_size/batch_size) == 0:
+
+                train_loss = sess.run(cross_entropy,
+                                      feed_dict={x_data: x_train_bf[:valid_set_size],
+                                                 y_data: y_train[:valid_set_size],
+                                                 tf_keep_prob: 1.0})
+
+
+                train_acc = accuracy.eval(feed_dict={x_data: x_train_bf[:valid_set_size],
+                                                     y_data: y_train[:valid_set_size],
+                                                     tf_keep_prob: 1.0})
+
+                valid_loss = sess.run(cross_entropy,feed_dict={x_data: x_valid_bf,
+                                                               y_data: y_valid,
+                                                               tf_keep_prob: 1.0})
+
+
+                valid_acc = accuracy.eval(feed_dict={x_data: x_valid_bf,
+                                                     y_data: y_valid,
+                                                     tf_keep_prob: 1.0})
+
+                # print('%.2f Iter: train/val loss = %.4f/%.4f, train/val acc = %.4f/%.4f'%(
+                #     i, train_loss, valid_loss, train_acc, valid_acc))
+
+        # np.save(os.path.join(os.getcwd(), 'train_acc.npy'), train_acc)
+        # np.save(os.path.join(os.getcwd(), 'valid_acc.npy'), valid_acc)
+        # np.save(os.path.join(os.getcwd(), 'train_loss.npy'), train_loss)
+        # np.save(os.path.join(os.getcwd(), 'valid_loss.npy'), valid_loss)
+
+        acc_train_DNN += train_acc
+        acc_valid_DNN += valid_acc
+        loss_train_DNN += train_loss
+        loss_valid_DNN += valid_loss
+
+        y_valid_pred_proba += y_pred.eval(feed_dict={x_data: x_valid_bf, tf_keep_prob: 1.0})
+        y_test_pred_proba_DNN += y_pred.eval(feed_dict={x_data: x_test_bf, tf_keep_prob: 1.0})
+
+        saver.save(sess, '/Applications/XAMPP/xamppfiles/htdocs/PlantSeedlings/my_model/model.ckpt')
+        sess.close()
+else:
+    with tf.Session() as sess:
+        saver.restore(sess, "/Applications/XAMPP/xamppfiles/htdocs/PlantSeedlings/my_model/model.ckpt")
+        y_test_pred_proba_DNN += y_pred.eval(feed_dict={x_data: x_test_bf, tf_keep_prob: 1.0})
         
-        x_batch, y_batch = get_next_batch(batch_size)
-        
-        sess.run(train_step, feed_dict={x_data: x_batch, y_data: y_batch, 
-                                        tf_keep_prob: keep_prob, 
-                                        tf_learn_rate: learn_rate})
-
-        if i%int(0.25*train_set_size/batch_size) == 0:
-            
-            train_loss = sess.run(cross_entropy,
-                                  feed_dict={x_data: x_train_bf[:valid_set_size], 
-                                             y_data: y_train[:valid_set_size], 
-                                             tf_keep_prob: 1.0})
-
-            
-            train_acc = accuracy.eval(feed_dict={x_data: x_train_bf[:valid_set_size], 
-                                                 y_data: y_train[:valid_set_size], 
-                                                 tf_keep_prob: 1.0})    
-
-            valid_loss = sess.run(cross_entropy,feed_dict={x_data: x_valid_bf, 
-                                                           y_data: y_valid, 
-                                                           tf_keep_prob: 1.0})
-
-           
-            valid_acc = accuracy.eval(feed_dict={x_data: x_valid_bf, 
-                                                 y_data: y_valid, 
-                                                 tf_keep_prob: 1.0})      
-
-            print('%.2f epoch: train/val loss = %.4f/%.4f, train/val acc = %.4f/%.4f'%(
-                (i+1)*batch_size/train_set_size, train_loss, valid_loss, train_acc, valid_acc))
-
-    
-    acc_train_DNN += train_acc
-    acc_valid_DNN += valid_acc
-    loss_train_DNN += train_loss
-    loss_valid_DNN += valid_loss
-    
-    y_valid_pred_proba += y_pred.eval(feed_dict={x_data: x_valid_bf, tf_keep_prob: 1.0}) 
-    y_test_pred_proba_DNN += y_pred.eval(feed_dict={x_data: x_test_bf, tf_keep_prob: 1.0}) 
-
-    sess.close()
-        
-acc_train_DNN /= float(cv_num)
-acc_valid_DNN /= float(cv_num)
-loss_train_DNN /= float(cv_num)
-loss_valid_DNN /= float(cv_num)
+# acc_train_DNN /= float(cv_num)
+# acc_valid_DNN /= float(cv_num)
+# loss_train_DNN /= float(cv_num)
+# loss_valid_DNN /= float(cv_num)
 
 # final validation prediction
-y_valid_pred_proba /= float(cv_num)
-y_valid_pred_class = np.argmax(y_valid_pred_proba, axis = 1)
+# y_valid_pred_proba /= float(cv_num)
+# y_valid_pred_class = np.argmax(y_valid_pred_proba, axis = 1)
 
 # final test prediction
 y_test_pred_proba_DNN /= float(cv_num)
 y_test_pred_class_DNN = np.argmax(y_test_pred_proba_DNN, axis = 1)
 
 # final loss and accuracy
-print('')
-print('final: train/val loss = %.4f/%.4f, train/val acc = %.4f/%.4f'%(loss_train_DNN, 
-                                                                      loss_valid_DNN, 
-                                                                      acc_train_DNN, 
-                                                                      acc_valid_DNN))
+# print('final: train/val loss = %.4f/%.4f, train/val acc = %.4f/%.4f'%(loss_train_DNN,
+#                                                                       loss_valid_DNN,
+#                                                                       acc_train_DNN,
+#                                                                       acc_valid_DNN))
+for n, i in enumerate(y_test_pred_proba_DNN):
+    acc = max(i)/sum(i)
+    sp = y_test_pred_class_DNN[n]
+    if acc > 0.5:
+        print('Prediction:', species[sp])
+        print('Accuracy:', round(acc, 4))
+    else:
+        print('unknown species')
 
-## show confusion matrix
-    
-cnf_matrix = confusion_matrix(one_hot_to_dense(y_valid), y_valid_pred_class)
+# y_test_pred_class = y_test_pred_class_DNN
+# test_df['species_id'] = y_test_pred_class
+# test_df['species'] = [species[sp] for sp in y_test_pred_class]
+# test_df[['file', 'species']].to_csv('Plantseedling.csv', index=False)
 
-abbreviation = ['BG', 'Ch', 'Cl', 'CC', 'CW', 'FH', 'LSB', 'M', 'SM', 'SP', 'SFC', 'SB']
-pd.DataFrame({'class': species, 'abbreviation': abbreviation})
-
-fig, ax = plt.subplots(1)
-ax = sns.heatmap(cnf_matrix, ax=ax, cmap=plt.cm.Greens, annot=True)
-ax.set_xticklabels(abbreviation)
-ax.set_yticklabels(abbreviation)
-plt.title('Confusion matrix of validation set')
-plt.ylabel('True species')
-plt.xlabel('Predicted species')
-plt.show()
-
-y_test_pred_class = y_test_pred_class_DNN
-test_df['species_id'] = y_test_pred_class
-test_df['species'] = [species[sp] for sp in y_test_pred_class]
-test_df[['file', 'species']].to_csv('submission.csv', index=False)
-
-print('total running time: ', datetime.datetime.now()-global_start)
