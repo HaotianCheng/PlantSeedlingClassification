@@ -20,12 +20,13 @@ pre_train = False
 # Initial operation
 load_bf_train=True
 load_bf_test=False
+split = True
 
 take_train_samples= True
 take_test_samples= True
 num_test_samples= 20
 
-show_plot=True
+show_plot=False
 
 ## read train and test data
 # tensorboard --logdir=foo:C:\Galaxy\Tools\Scripts\PlantSeedling\logs
@@ -35,7 +36,7 @@ data_dir = 'C:\\Galaxy\\Tools\\Scripts\\PlantSeedling'
 train_dir = os.path.join(data_dir, 'train')
 test_dir = os.path.join(data_dir, 'test')
 model_dir = os.path.join(data_dir, 'model_cnn')
-model_name = 'cnn_models1'
+model_name = 'cnn_models4'
 real_model_name = model_name + '.meta'
 model_path = os.path.join(model_dir, model_name)
 
@@ -236,9 +237,9 @@ def shuffle_train_valid_data():
     print('shuffle train and validation data')
     
     # shuffle train and validation data of original data
-    perm_array = np.arange(len(x_train_valid_bf)) 
+    perm_array = np.arange(len(x_train_valid_bf))
     np.random.shuffle(perm_array)
-    
+
     # split train and validation sets based on original data
     x_train_bf = x_train_valid_bf[perm_array[:train_set_size]]
     y_train = dense_to_one_hot(y_train_valid[perm_array[:train_set_size]], num_species)
@@ -257,7 +258,17 @@ else:
     train_set_size = len(x_train_valid_bf)
 
 # split into train and validation sets including shuffling
-x_train_bf, y_train, x_valid_bf, y_valid = shuffle_train_valid_data() 
+if not split:
+    x_train_bf, y_train, x_valid_bf, y_valid = shuffle_train_valid_data()
+    np.save(os.path.join(os.getcwd(), 'x_train_bf.npy'), x_train_bf)
+    np.save(os.path.join(os.getcwd(), 'y_train.npy'), y_train)
+    np.save(os.path.join(os.getcwd(), 'x_valid_bf.npy'), x_valid_bf)
+    np.save(os.path.join(os.getcwd(), 'y_valid.npy'), y_valid)
+else:
+    x_train_bf = np.load(os.path.join(os.getcwd(), 'x_train_bf.npy'))
+    y_train = np.load(os.path.join(os.getcwd(), 'y_train.npy'))
+    x_valid_bf = np.load(os.path.join(os.getcwd(), 'x_valid_bf.npy'))
+    y_valid = np.load(os.path.join(os.getcwd(), 'y_valid.npy'))
 
 print('x_train_bf.shape = ', x_train_bf.shape)
 print('y_train.shape = ', y_train.shape)
@@ -331,8 +342,7 @@ cv_num = 1 # number of cross validations
 n_epoch = 250 # number of epochs
 batch_size = 100
 keep_prob = 0.50 # dropout regularization with keeping probability
-learn_rate_range = [0.01,0.005,0.0025,0.001,0.001,0.001,0.00075,0.0005,0.00025,0.0001,
-                   0.0001,0.0001,0.0001,0.0001,0.0001,0.0001,0.0001,0.0001,0.0001]
+
 learn_rate_step = 3 # in terms of epochs
 
 acc_train_DNN = 0
@@ -363,8 +373,10 @@ if not pre_train:
             print('restore')
             saver.restore(sess, model_path)
 
-        # shuffle train/validation splits
-        shuffle_train_valid_data()
+        # perm = np.arange(len(x_train_bf))
+        # np.random.shuffle(perm)
+        # x_train_bf = x_train_bf[perm]
+        # y_train = y_train[perm]
         n_step = -1
         # training model
         for i in range(int(n_epoch*train_set_size/batch_size)):
