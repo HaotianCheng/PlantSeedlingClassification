@@ -1,4 +1,4 @@
-# PlantSeedlingClassification-Group12
+# PlantSeedlingClassification-Group13
 Database: https://www.kaggle.com/c/plant-seedlings-classification/data
 the Sprint2 python script shows how we load and preprocess the Train Data and Test Data(Mask the train Data).
 In Sprint3, We extract the bottled-neck feartures using Xception Models from keras to improve the accuracy of the model.
